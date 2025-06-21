@@ -255,22 +255,49 @@ public class DetailsActivity extends AppCompatActivity {
         }
         if (measurementsArr == null) {
             Toast.makeText(context,getResources().getString(R.string.no_measurements), Toast.LENGTH_LONG).show();
+            tvResults.setText(""); // Очищуємо поле, якщо дані не прийшли
         } else {
+
             String text = "";
             boolean is_norm = true;
-            for (Measurement measurement : measurementsArr) {
-                String measurement_unit = getMeasurementUnitBySensorId(measurement.getSensorId());
-                String measure = getMeasureBySensorId(measurement.getSensorId());
-                if (measure.contains("CO") && measurement.getValue() > 55.0) {
-                    is_norm = false;
+
+            // 1. Отримуємо ID датчика, який наразі обраний у випадаючому списку
+            Spinner spinSensors = findViewById(R.id.spinner_select_sensor);
+            int selectedPosition = spinSensors.getSelectedItemPosition();
+
+            // Перевіряємо, чи є сенсори і чи валідна позиція
+            if (sensorsStr != null && sensorsStr.length > selectedPosition) {
+                // Розбираємо рядок 'id=X,name,measure', щоб отримати ID обраного сенсора
+                String[] selectedStrRow = sensorsStr[selectedPosition].split(",");
+                String[] selectedStrRowId = selectedStrRow[0].split("=");
+                int selectedSensorId = Integer.parseInt(selectedStrRowId[1]);
+
+                // 2. Проходимо по списку ВСІХ отриманих вимірювань
+                for (Measurement measurement : measurementsArr) {
+                    // 3. І ЯКЩО ID вимірювання збігається з ID обраного датчика - виводимо його
+                    if (measurement.getSensorId() == selectedSensorId) {
+                        String measurement_unit = getMeasurementUnitBySensorId(measurement.getSensorId());
+                        String measure = getMeasureBySensorId(measurement.getSensorId());
+
+                        // Перевірка на перевищення норми (залишається як є)
+                        if (measure.contains("CO") && measurement.getValue() > 55.0) {
+                            is_norm = false;
+                        }
+
+                        // Формуємо рядок для виводу
+                        text += "Sensor id: " + measurement.getSensorId() + ", \t";
+                        text += measurement.getDateime() + ", \t";
+                        text += measurement.getValue() + " " + measurement_unit + "\n";
+
+                        // Оскільки ми шукаємо тільки одне актуальне значення, можна вийти з циклу
+                        break;
+                    }
                 }
-                text += "Sensor id: " + measurement.getSensorId() + ", \t";
-                text += measurement.getDateime() + ", \t";
-                text += measurement.getValue() + " " + measurement_unit + "\n";
             }
+
             tvResults.setText(text);
 
-            // play sound for some seconds
+            // Логіка для звукового сповіщення
             if (!is_norm && options[0] == 1) {
                 for (int i = 0; i < 40; i++) {
                     MediaPlayer music = MediaPlayer.create(DetailsActivity.this, R.raw.notification);
@@ -282,7 +309,7 @@ public class DetailsActivity extends AppCompatActivity {
                 dialog.setIcon(R.mipmap.ic_launcher_round);
                 dialog.setTitle(getResources().getString(R.string.warning_title));
                 dialog.setMessage
-                            (getResources().getString(R.string.CO_high));
+                        (getResources().getString(R.string.CO_high));
                 dialog.setPositiveButton("Ok", ((dialogInterface, i) -> finish()));
                 dialog.create();
                 dialog.show();
